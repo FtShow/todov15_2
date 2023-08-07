@@ -4,6 +4,7 @@ import IconButton from '@mui/material/IconButton';
 import { AddBox } from '@mui/icons-material';
 
 type AddItemFormPropsType = {
+    disabled?: boolean
     addItem: (title: string) => void
 }
 

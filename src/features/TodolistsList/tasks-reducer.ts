@@ -2,7 +2,7 @@ import {AddTodolistActionType, RemoveTodolistActionType, SetTodolistsActionType}
 import {TaskPriorities, TaskStatuses, TaskType, todolistsAPI, UpdateTaskModelType} from '../../api/todolists-api'
 import {Dispatch} from 'redux'
 import {AppRootStateType} from '../../app/store'
-import {setStatusAC, setStatusType} from "../../app/appReducer";
+import {setErrorAC, setErrorType, setStatusAC, setStatusType} from "../../app/appReducer";
 
 const initialState: TasksStateType = {}
 
@@ -72,10 +72,16 @@ export const addTaskTC = (title: string, todolistId: string) => (dispatch: Dispa
     dispatch(setStatusAC('loading'))
     todolistsAPI.createTask(todolistId, title)
         .then(res => {
-            const task = res.data.data.item
-            const action = addTaskAC(task)
-            dispatch(action)
-            dispatch(setStatusAC('succeeded'))
+            if (res.data.resultCode === Result_Code.OK) {
+                const task = res.data.data.item
+                const action = addTaskAC(task)
+                dispatch(action)
+                dispatch(setStatusAC('succeeded'))
+            } else {
+                dispatch(setErrorAC(res.data.messages[0] ?? "unknown message"))
+                dispatch(setStatusAC('succeeded'))
+            }
+
         })
 }
 export const updateTaskTC = (taskId: string, domainModel: UpdateDomainTaskModelType, todolistId: string) =>
@@ -101,9 +107,21 @@ export const updateTaskTC = (taskId: string, domainModel: UpdateDomainTaskModelT
 
         todolistsAPI.updateTask(todolistId, taskId, apiModel)
             .then(res => {
-                const action = updateTaskAC(taskId, domainModel, todolistId)
-                dispatch(action)
+                if (res.data.resultCode === Result_Code.OK) {
+                    const action = updateTaskAC(taskId, domainModel, todolistId)
+                    dispatch(action)
+                    dispatch(setStatusAC('succeeded'))
+                }
+                else {
+                    dispatch(setErrorAC(res.data.messages[0] ?? "unknown message"))
+                    dispatch(setStatusAC('succeeded'))
+                }
+
+            })
+            .catch((e)=>{
+                dispatch(setErrorAC(e.message))
                 dispatch(setStatusAC('succeeded'))
+
             })
     }
 
@@ -127,4 +145,10 @@ type ActionsType =
     | RemoveTodolistActionType
     | SetTodolistsActionType
     | ReturnType<typeof setTasksAC>
-| setStatusType
+    | setStatusType
+    | setErrorType
+export enum Result_Code {
+OK,
+ERROR,
+CAPCHA_ERROR = 10,
+}
