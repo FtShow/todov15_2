@@ -3,6 +3,7 @@ import {TaskPriorities, TaskStatuses, TaskType, todolistsAPI, UpdateTaskModelTyp
 import {Dispatch} from 'redux'
 import {AppRootStateType} from '../../app/store'
 import {setErrorAC, setErrorType, setStatusAC, setStatusType} from "../../app/appReducer";
+import {handlerServerNetworkUtils, handleServerAppError} from "../../utils/error-utils";
 
 const initialState: TasksStateType = {}
 
@@ -78,10 +79,12 @@ export const addTaskTC = (title: string, todolistId: string) => (dispatch: Dispa
                 dispatch(action)
                 dispatch(setStatusAC('succeeded'))
             } else {
-                dispatch(setErrorAC(res.data.messages[0] ?? "unknown message"))
-                dispatch(setStatusAC('succeeded'))
+                handleServerAppError<{ item: TaskType }>(dispatch, res.data)
             }
 
+        })
+        .catch((e)=>{
+            handlerServerNetworkUtils(dispatch, e.message)
         })
 }
 export const updateTaskTC = (taskId: string, domainModel: UpdateDomainTaskModelType, todolistId: string) =>
@@ -111,17 +114,14 @@ export const updateTaskTC = (taskId: string, domainModel: UpdateDomainTaskModelT
                     const action = updateTaskAC(taskId, domainModel, todolistId)
                     dispatch(action)
                     dispatch(setStatusAC('succeeded'))
-                }
-                else {
+                } else {
                     dispatch(setErrorAC(res.data.messages[0] ?? "unknown message"))
                     dispatch(setStatusAC('succeeded'))
                 }
 
             })
-            .catch((e)=>{
-                dispatch(setErrorAC(e.message))
-                dispatch(setStatusAC('succeeded'))
-
+            .catch((e) => {
+                handlerServerNetworkUtils(dispatch, e.message)
             })
     }
 
@@ -147,8 +147,9 @@ type ActionsType =
     | ReturnType<typeof setTasksAC>
     | setStatusType
     | setErrorType
+
 export enum Result_Code {
-OK,
-ERROR,
-CAPCHA_ERROR = 10,
+    OK,
+    ERROR,
+    CAPCHA_ERROR = 10,
 }
