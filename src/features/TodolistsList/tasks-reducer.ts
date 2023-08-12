@@ -4,6 +4,7 @@ import {Dispatch} from 'redux'
 import {AppRootStateType} from '../../app/store'
 import {setErrorAC, setErrorType, setStatusAC, setStatusType} from "../../app/appReducer";
 import {handlerServerNetworkUtils, handleServerAppError} from "../../utils/error-utils";
+import {AxiosError} from "axios";
 
 const initialState: TasksStateType = {}
 
@@ -69,23 +70,24 @@ export const removeTaskTC = (taskId: string, todolistId: string) => (dispatch: D
             dispatch(setStatusAC('succeeded'))
         })
 }
-export const addTaskTC = (title: string, todolistId: string) => (dispatch: Dispatch<ActionsType>) => {
+export const addTaskTC = (title: string, todolistId: string) => async (dispatch: Dispatch<ActionsType>) => {
     dispatch(setStatusAC('loading'))
-    todolistsAPI.createTask(todolistId, title)
-        .then(res => {
-            if (res.data.resultCode === Result_Code.OK) {
-                const task = res.data.data.item
-                const action = addTaskAC(task)
-                dispatch(action)
-                dispatch(setStatusAC('succeeded'))
-            } else {
-                handleServerAppError<{ item: TaskType }>(dispatch, res.data)
-            }
+    try {
+        const res = await todolistsAPI.createTask(todolistId, title)
+        if (res.data.resultCode === Result_Code.OK) {
+            const task = res.data.data.item
+            const action = addTaskAC(task)
+            dispatch(action)
+            dispatch(setStatusAC('succeeded'))
+        } else {
+            handleServerAppError<{ item: TaskType }>(dispatch, res.data)
+        }
+    } catch (e: any) {
+        const error = e.response ? e.response.data.messages[0].message : e.message
+        handleServerAppError<{ item: TaskType }>(dispatch, error.data)
 
-        })
-        .catch((e)=>{
-            handlerServerNetworkUtils(dispatch, e.message)
-        })
+    }
+
 }
 export const updateTaskTC = (taskId: string, domainModel: UpdateDomainTaskModelType, todolistId: string) =>
     (dispatch: Dispatch<ActionsType>, getState: () => AppRootStateType) => {
@@ -120,8 +122,9 @@ export const updateTaskTC = (taskId: string, domainModel: UpdateDomainTaskModelT
                 }
 
             })
-            .catch((e) => {
-                handlerServerNetworkUtils(dispatch, e.message)
+            .catch((e: AxiosError<ErrorType>) => {
+                const error = e.response ? e.response.data.messages[0].message : e.message
+                handlerServerNetworkUtils(dispatch, error)
             })
     }
 
@@ -152,4 +155,15 @@ export enum Result_Code {
     OK,
     ERROR,
     CAPCHA_ERROR = 10,
+}
+
+type ErrorType = {
+    statusCode: number,
+    messages: [
+        {
+            message: string,
+            field: string
+        }
+    ]
+    error: string
 }
