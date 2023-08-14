@@ -20,6 +20,7 @@ export const todolistsReducer = (state: Array<TodolistDomainType> = initialState
         case "CHANGE-STATUS-TODOLIST": {
             return state.map(tl => (tl.id === action.id ? {...tl, entityStatus: action.status} : tl))
         }
+
         default:
             return state
     }
